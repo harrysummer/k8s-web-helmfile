@@ -1,0 +1,6 @@
+global:
+  debug: false
+cluster-issuer:
+  self-signed: false
+  staging: false
+  prod: false

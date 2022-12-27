@@ -1,0 +1,10 @@
+global:
+  debug: true
+cluster-issuer:
+  self-signed: true
+nextcloud:
+  host: cloud.localhost
+  cluster-issuer: self-signed
+pgadmin:
+  host: pgadmin.localhost
+  cluster-issuer: self-signed

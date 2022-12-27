@@ -1,0 +1,8 @@
+persistence:
+  enabled: false
+recreateOnRedeploy: false
+{{- if eq .Environment.Name "dev" }}
+config:
+  general:
+    ALLOW_EMPTY_SENDER_DOMAINS: "1"
+{{- end }}

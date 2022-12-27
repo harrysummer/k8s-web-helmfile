@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgsql-disk
+spec:
+  accessModes:
+    - ReadWriteOnce
+{{- if .Values.debug }}
+  resources:
+    requests:
+      storage: 1Gi
+{{- else }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.size }}
+  volumeName: pgsql-disk
+  storageClassName: managed-csi
+{{- end }}

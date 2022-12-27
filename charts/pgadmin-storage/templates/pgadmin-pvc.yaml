@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgadmin-blob
+spec:
+  accessModes:
+    - ReadWriteMany
+{{- if .Values.debug }}
+  resources:
+    requests:
+      storage: 1Gi
+{{- else }}
+  storageClassName: pgadmin-storage-class
+  resources:
+    requests:
+      storage: {{ .Values.pgadmin.size }}
+{{- end }}

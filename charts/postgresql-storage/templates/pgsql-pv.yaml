@@ -1,0 +1,19 @@
+{{- if not .Values.debug }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pgsql-disk
+spec:
+  capacity:
+    storage: {{ .Values.postgresql.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: managed-csi
+  csi:
+    driver: disk.csi.azure.com
+    readOnly: false
+    volumeHandle: {{ .Values.postgresql.disk }}
+    volumeAttributes:
+      fsType: ext4
+{{- end }}

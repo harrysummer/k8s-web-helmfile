@@ -1,0 +1,2 @@
+creation_rules:
+- azure_keyvault: https://k8s-web-kv.vault.azure.net/keys/sops-key/6fa73ecbe2c44d0b85a269f9f9660035

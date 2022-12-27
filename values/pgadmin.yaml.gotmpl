@@ -1,0 +1,19 @@
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+  - host: {{ .Values.pgadmin.host }}
+    paths:
+    - path: /
+      pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: {{ index .Values.pgadmin "cluster-issuer" }}
+  tls:
+  - hosts:
+    - {{ .Values.pgadmin.host }}
+    secretName: pgadmin-tls-secret
+persistentVolume:
+  existingClaim: pgadmin-blob
+existingSecret: pgadmin-user-secret
+env:
+  email: {{ fetchSecretValue "ref+sops://secrets/app-secrets.yaml#/pgadmin/username" }}

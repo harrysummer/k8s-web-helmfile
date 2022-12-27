@@ -1,0 +1,19 @@
+{{- if not .Values.debug }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nextcloud-system
+spec:
+  capacity:
+    storage: {{ .Values.nextcloud.system.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: managed-csi
+  csi:
+    driver: disk.csi.azure.com
+    readOnly: false
+    volumeHandle: {{ .Values.nextcloud.system.disk }}
+    volumeAttributes:
+      fsType: ext4
+{{- end }}

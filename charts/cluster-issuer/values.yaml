@@ -1,0 +1,8 @@
+# self-signed certificate for local debugging
+self-signed: false
+
+# Letsencrypt staging cert for online test
+staging: false
+
+# Letsencrypt cert for prod use
+prod: false

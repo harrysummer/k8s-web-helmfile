@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-data
+spec:
+  accessModes:
+    - ReadWriteMany
+{{- if .Values.debug }}
+  resources:
+    requests:
+      storage: 1Gi
+{{- else }}
+  storageClassName: azurefile-csi
+  volumeName: nextcloud-data
+  resources:
+    requests:
+      storage: {{ .Values.nextcloud.data.size }}
+{{- end }}

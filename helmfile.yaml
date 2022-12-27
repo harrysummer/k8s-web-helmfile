@@ -1,0 +1,133 @@
+repositories:
+- name: ingress-nginx
+  url: https://kubernetes.github.io/ingress-nginx
+- name: jetstack
+  url: https://charts.jetstack.io
+- name: bitnami
+  url: https://charts.bitnami.com/bitnami
+- name: runix
+  url: https://helm.runix.net/
+- name: nextcloud
+  url: https://nextcloud.github.io/helm/
+- name: docker-postfix
+  url: https://bokysan.github.io/docker-postfix/
+- name: emberstack
+  url: https://emberstack.github.io/helm-charts
+
+environments:
+  dev:
+    values:
+    - ./environments/base.yaml
+    - ./environments/dev.yaml
+  prod:
+    values:
+    - ./environments/base.yaml
+    - ./environments/prod.yaml
+    secrets:
+    - ./environments/prod.secret.yaml
+
+releases:
+- name: reflector
+  namespace: reflector
+  chart: emberstack/reflector
+  version: ~6.1.47
+
+- name: app-secrets
+  namespace: secret
+  chart: ./charts/app-secrets
+  values:
+  - &env ./values/env-magic.gotmpl
+  secrets:
+  - ./secrets/app-secrets.yaml
+
+- name: ingress-nginx
+  namespace: ingress
+  chart: ingress-nginx/ingress-nginx
+  version: ~4.4.0
+{{- if eq .Environment.Name "prod" }}
+  secrets:
+  - ./secrets/ingress-nginx.prod.yaml
+{{- end }}
+
+- name: cert-manager
+  namespace: cert-manager
+  chart: jetstack/cert-manager
+  version: ~1.10.1
+  set:
+  - name: installCRDs
+    value: true
+
+- name: cluster-issuer
+  namespace: cert-manager
+  chart: ./charts/cluster-issuer
+  values:
+  - *env
+  disableValidation: true
+  needs:
+  - cert-manager/cert-manager
+
+- name: postgresql-storage
+  namespace: postgresql
+  chart: ./charts/postgresql-storage
+  values:
+  - *env
+{{- if eq .Environment.Name "prod" }}
+  secrets:
+  - ./secrets/postgresql-storage.prod.yaml
+{{- end }}
+
+- name: pgadmin-storage
+  namespace: pgadmin
+  chart: ./charts/pgadmin-storage
+  values:
+  - *env
+{{- if eq .Environment.Name "prod" }}
+  secrets:
+  - ./secrets/pgadmin-storage.prod.yaml
+{{- end }}
+
+- name: nextcloud-storage
+  namespace: nextcloud
+  chart: ./charts/nextcloud-storage
+  values:
+  - *env
+{{- if eq .Environment.Name "prod" }}
+  secrets:
+  - ./secrets/nextcloud-storage.prod.yaml
+{{- end }}
+
+- name: postgresql
+  namespace: postgresql
+  chart: bitnami/postgresql
+  version: ~12.1.6
+  values:
+  - ./values/postgresql.yaml.gotmpl
+
+- name: pgadmin
+  namespace: pgadmin
+  chart: runix/pgadmin4
+  version: ~1.13.9
+  values:
+  - ./values/pgadmin.yaml.gotmpl
+
+- name: nextcloud
+  namespace: nextcloud
+  chart: nextcloud/nextcloud
+  version: ~3.3.4
+  values:
+  - ./values/nextcloud.yaml.gotmpl
+  secrets:
+  - ./secrets/nextcloud.yaml
+  needs:
+  - postgresql/postgresql
+
+- name: mail
+  namespace: mail
+  chart: docker-postfix/mail
+  version: ~3.5.1
+  values:
+  - ./values/mail.yaml.gotmpl
+{{- if eq .Environment.Name "prod" }}
+  secrets:
+  - ./secrets/mail.prod.yaml
+{{- end }}

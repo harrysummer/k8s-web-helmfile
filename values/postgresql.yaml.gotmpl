@@ -1,0 +1,7 @@
+auth:
+  existingSecret: postgresql-user-secret
+  username: {{ fetchSecretValue "ref+sops://secrets/app-secrets.yaml#/postgresql/username" }}
+  database: {{ fetchSecretValue "ref+sops://secrets/app-secrets.yaml#/postgresql/username" }}
+primary:
+  persistence:
+    existingClaim: pgsql-disk

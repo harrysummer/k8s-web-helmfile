@@ -1,0 +1,6 @@
+cluster-issuer:
+  prod: true
+nextcloud:
+  cluster-issuer: letsencrypt-prod
+pgadmin:
+  cluster-issuer: letsencrypt-prod
