@@ -39,6 +39,7 @@ releases:
   - &env ./values/env-magic.gotmpl
   secrets:
   - ./secrets/app-secrets.yaml
+  - ./secrets/github-secrets.yaml
 
 - name: ingress-nginx
   namespace: ingress
@@ -120,6 +121,7 @@ releases:
   - ./secrets/nextcloud.yaml
   needs:
   - postgresql/postgresql
+  - secret/app-secrets
 
 - name: mail
   namespace: mail
