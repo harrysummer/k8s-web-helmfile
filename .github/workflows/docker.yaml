@@ -34,4 +34,4 @@ jobs:
           context: ./dockers/nextcloud
           file: ./dockers/nextcloud/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/nextcloud:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/nextcloud:${{ github.sha }}
