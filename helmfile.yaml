@@ -46,6 +46,9 @@ releases:
   chart: ingress-nginx/ingress-nginx
   version: ~4.4.0
 {{- if eq .Environment.Name "prod" }}
+  set:
+  - name: controller.service.externalTrafficPolicy
+    value: Local
   secrets:
   - ./secrets/ingress-nginx.prod.yaml
 {{- end }}
