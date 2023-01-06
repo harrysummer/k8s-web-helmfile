@@ -1,7 +1,7 @@
 image:
   flavor: fpm
   repository: ghcr.io/harrysummer/k8s-web-helmfile/nextcloud
-  tag: e5911e28357880f8d05445c41c7862bb774cb52f
+  tag: fd478579ca2224b3a85f1a9f92e36cff5593780b
   pullSecrets:
   - nextcloud-image-pull-secret
 ingress:
@@ -53,6 +53,18 @@ nextcloud:
     locale.config.php: |
       <?php $CONFIG = array (
         'default_phone_region' => 'US',
+      );
+    preview.config.php: |
+      <?php $CONFIG = array (
+        'enable_previews' => true,
+        'enabledPreviewProviders' => array (
+          0 => 'OC\\Preview\\Image',
+          1 => 'OC\\Preview\\Movie',
+          2 => 'OC\\Preview\\MarkDown',
+          3 => 'OC\\Preview\\MP3',
+          4 => 'OC\\Preview\\TXT',
+          5 => 'OC\\Preview\\OpenDocument',
+        ),
       );
   phpConfigs:
     www2.conf: |
