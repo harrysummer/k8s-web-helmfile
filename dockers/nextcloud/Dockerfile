@@ -32,3 +32,6 @@ RUN mkdir pdlib \
     ) \
     && rm -rf pdlib \
     && docker-php-ext-enable pdlib
+
+RUN apt update && apt install -y ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
