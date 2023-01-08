@@ -3,6 +3,8 @@ FROM nextcloud:25.0.2-fpm
 RUN apt update && apt install -y libbz2-dev \
     && docker-php-ext-configure bz2 --with-bz2 \
     && docker-php-ext-install -j$(nproc) bz2 \
+    && docker-php-ext-configure sysvshm --enable-sysvshm \
+    && docker-php-ext-install -j$(nproc) sysvshm \
     && apt purge -y libbz2-dev \
     && apt autoremove -y \
     && rm -rf /var/lib/apt/lists/*
