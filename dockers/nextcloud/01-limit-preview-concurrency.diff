@@ -1,0 +1,271 @@
+diff --git a/apps/settings/lib/Controller/CheckSetupController.php b/apps/settings/lib/Controller/CheckSetupController.php
+index 752e127..45e94c3 100644
+--- a/apps/settings/lib/Controller/CheckSetupController.php
++++ b/apps/settings/lib/Controller/CheckSetupController.php
+@@ -717,6 +717,11 @@ Raw output
+ 			$recommendedPHPModules[] = 'intl';
+ 		}
+ 
++		if (!extension_loaded('sysvsem')) {
++			// used to limit the usage of resources by preview generator
++			$recommendedPHPModules[] = 'sysvsem';
++		}
++
+ 		if (!defined('PASSWORD_ARGON2I') && PHP_VERSION_ID >= 70400) {
+ 			// Installing php-sodium on >=php7.4 will provide PASSWORD_ARGON2I
+ 			// on previous version argon2 wasn't part of the "standard" extension
+diff --git a/config/config.sample.php b/config/config.sample.php
+index 104b3e3..86c4cb7 100644
+--- a/config/config.sample.php
++++ b/config/config.sample.php
+@@ -1112,6 +1112,28 @@ $CONFIG = [
+  * Defaults to ``true``
+  */
+ 'enable_previews' => true,
++
++/**
++ * Number of all preview requests being processed concurrently,
++ * including previews that need to be newly generated, and those that have
++ * been generated.
++ * 
++ * This should be greater than 'preview_concurrency_new'.
++ * If unspecified, defaults to twice the value of 'preview_concurrency_new'.
++ */
++'preview_concurrency_all' => 8,
++
++/**
++ * Number of new previews that are being concurrently generated.
++ * 
++ * Depending on the max preview size set by 'preview_max_x' and 'preview_max_y',
++ * the generation process can consume considerable CPU and memory resources.
++ * It's recommended to limit this to be no greater than the number of CPU cores. 
++ * If unspecified, defaults to the number of CPU cores, or 4 if that cannot
++ * be determined.
++ */
++'preview_concurrency_new' => 4,
++
+ /**
+  * The maximum width, in pixels, of a preview. A value of ``null`` means there
+  * is no limit.
+diff --git a/lib/private/Preview/Generator.php b/lib/private/Preview/Generator.php
+index a49cc8e..7d2408d 100644
+--- a/lib/private/Preview/Generator.php
++++ b/lib/private/Preview/Generator.php
+@@ -48,6 +48,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+ use Symfony\Component\EventDispatcher\GenericEvent;
+ 
+ class Generator {
++	public const SEMAPHORE_ID_ALL = 0x0a11;
++	public const SEMAPHORE_ID_NEW = 0x07ea;
+ 
+ 	/** @var IPreview */
+ 	private $previewManager;
+@@ -302,6 +304,98 @@ class Generator {
+ 		throw new NotFoundException('No provider successfully handled the preview generation');
+ 	}
+ 
++	/**
++	 * Acquire a semaphore of the specified id and concurrency, blocking if necessary.
++	 * Return an identifier of the semaphore on success, which can be used to release it via
++	 * {@see Generator::unguardWithSemaphore()}.
++	 *
++	 * @param int $semId
++	 * @param int $concurrency
++	 * @return false|resource the semaphore on success or false on failure
++	 */
++	public static function guardWithSemaphore(int $semId, int $concurrency) {
++		if (!extension_loaded('sysvsem')) {
++			return false;
++		}
++		$sem = sem_get($semId, $concurrency);
++		if ($sem === false) {
++			return false;
++		}
++		if (!sem_acquire($sem)) {
++			return false;
++		}
++		return $sem;
++	}
++
++	/**
++	 * Releases the semaphore acquired from {@see Generator::guardWithSemaphore()}.
++	 *
++	 * @param resource|bool $semId the semaphore identifier returned by guardWithSemaphore
++	 * @return bool
++	 */
++	public static function unguardWithSemaphore($semId): bool {
++		if (!is_resource($semId) || !extension_loaded('sysvsem')) {
++			return false;
++		}
++		return sem_release($semId);
++	}
++
++	/**
++	 * Get the number of concurrent threads supported by the host.
++	 *
++	 * @return int number of concurrent threads, or 0 if it cannot be determined
++	 */
++	public static function getHardwareConcurrency(): int {
++		static $width;
++		if (!isset($width)) {
++			if (is_file("/proc/cpuinfo")) {
++				$width = substr_count(file_get_contents("/proc/cpuinfo"), "processor");
++			} else {
++				$width = 0;
++			}
++		}
++		return $width;
++	}
++
++	/**
++	 * Get number of concurrent preview generations from system config
++	 *
++	 * Two config entries, `preview_concurrency_new` and `preview_concurrency_all`,
++	 * are available. If not set, the default values are determined with the hardware concurrency
++	 * of the host. In case the hardware concurrency cannot be determined, or the user sets an
++	 * invalid value, fallback values are:
++	 * For new images whose previews do not exist and need to be generated, 4;
++	 * For all preview generation requests, 8.
++	 * Value of `preview_concurrency_all` should be greater than or equal to that of
++	 * `preview_concurrency_new`, otherwise, the latter is returned.
++	 *
++	 * @param string $type either `preview_concurrency_new` or `preview_concurrency_all`
++	 * @return int number of concurrent preview generations, or -1 if $type is invalid
++	 */
++	public function getNumConcurrentPreviews(string $type): int {
++		static $cached = array();
++		if (array_key_exists($type, $cached)) {
++			return $cached[$type];
++		}
++
++		$hardwareConcurrency = self::getHardwareConcurrency();
++		switch ($type) {
++			case "preview_concurrency_all":
++				$fallback = $hardwareConcurrency > 0 ? $hardwareConcurrency * 2 : 8;
++				$concurrency_all = $this->config->getSystemValueInt($type, $fallback);
++				$concurrency_new = $this->getNumConcurrentPreviews("preview_concurrency_new");
++				$cached[$type] = max($concurrency_all, $concurrency_new);
++				break;
++			case "preview_concurrency_new":
++				$fallback = $hardwareConcurrency > 0 ? $hardwareConcurrency : 4;
++				$cached[$type] = $this->config->getSystemValueInt($type, $fallback);
++				break;
++			default:
++				return -1;
++		}
++		return $cached[$type];
++	}
++
+ 	/**
+ 	 * @param ISimpleFolder $previewFolder
+ 	 * @param File $file
+@@ -340,7 +434,13 @@ class Generator {
+ 				$maxWidth = $this->config->getSystemValueInt('preview_max_x', 4096);
+ 				$maxHeight = $this->config->getSystemValueInt('preview_max_y', 4096);
+ 
+-				$preview = $this->helper->getThumbnail($provider, $file, $maxWidth, $maxHeight);
++				$previewConcurrency = $this->getNumConcurrentPreviews('preview_concurrency_new');
++				$sem = self::guardWithSemaphore(self::SEMAPHORE_ID_NEW, $previewConcurrency);
++				try {
++					$preview = $this->helper->getThumbnail($provider, $file, $maxWidth, $maxHeight);
++				} finally {
++					self::unguardWithSemaphore($sem);
++				}
+ 
+ 				if (!($preview instanceof IImage)) {
+ 					continue;
+@@ -510,29 +610,34 @@ class Generator {
+ 			throw new \InvalidArgumentException('Failed to generate preview, failed to load image');
+ 		}
+ 
+-		if ($crop) {
+-			if ($height !== $preview->height() && $width !== $preview->width()) {
+-				//Resize
+-				$widthR = $preview->width() / $width;
+-				$heightR = $preview->height() / $height;
+-
+-				if ($widthR > $heightR) {
+-					$scaleH = $height;
+-					$scaleW = $maxWidth / $heightR;
+-				} else {
+-					$scaleH = $maxHeight / $widthR;
+-					$scaleW = $width;
++		$previewConcurrency = $this->getNumConcurrentPreviews('preview_concurrency_new');
++		$sem = self::guardWithSemaphore(self::SEMAPHORE_ID_NEW, $previewConcurrency);
++		try {
++			if ($crop) {
++				if ($height !== $preview->height() && $width !== $preview->width()) {
++					//Resize
++					$widthR = $preview->width() / $width;
++					$heightR = $preview->height() / $height;
++
++					if ($widthR > $heightR) {
++						$scaleH = $height;
++						$scaleW = $maxWidth / $heightR;
++					} else {
++						$scaleH = $maxHeight / $widthR;
++						$scaleW = $width;
++					}
++					$preview = $preview->preciseResizeCopy((int)round($scaleW), (int)round($scaleH));
+ 				}
+-				$preview = $preview->preciseResizeCopy((int)round($scaleW), (int)round($scaleH));
++				$cropX = (int)floor(abs($width - $preview->width()) * 0.5);
++				$cropY = (int)floor(abs($height - $preview->height()) * 0.5);
++				$preview = $preview->cropCopy($cropX, $cropY, $width, $height);
++			} else {
++				$preview = $maxPreview->resizeCopy(max($width, $height));
+ 			}
+-			$cropX = (int)floor(abs($width - $preview->width()) * 0.5);
+-			$cropY = (int)floor(abs($height - $preview->height()) * 0.5);
+-			$preview = $preview->cropCopy($cropX, $cropY, $width, $height);
+-		} else {
+-			$preview = $maxPreview->resizeCopy(max($width, $height));
++		} finally {
++			self::unguardWithSemaphore($sem);
+ 		}
+ 
+-
+ 		$path = $this->generatePath($width, $height, $crop, $preview->dataMimeType(), $prefix);
+ 		try {
+ 			$file = $previewFolder->newFile($path);
+diff --git a/lib/private/PreviewManager.php b/lib/private/PreviewManager.php
+index 0d08ef3..87e709e 100644
+--- a/lib/private/PreviewManager.php
++++ b/lib/private/PreviewManager.php
+@@ -182,7 +182,15 @@ class PreviewManager implements IPreview {
+ 	 * @since 11.0.0 - \InvalidArgumentException was added in 12.0.0
+ 	 */
+ 	public function getPreview(File $file, $width = -1, $height = -1, $crop = false, $mode = IPreview::MODE_FILL, $mimeType = null) {
+-		return $this->getGenerator()->getPreview($file, $width, $height, $crop, $mode, $mimeType);
++		$previewConcurrency = $this->getGenerator()->getNumConcurrentPreviews('preview_concurrency_all');
++		$sem = Generator::guardWithSemaphore(Generator::SEMAPHORE_ID_ALL, $previewConcurrency);
++		try {
++			$preview = $this->getGenerator()->getPreview($file, $width, $height, $crop, $mode, $mimeType);
++		} finally {
++			Generator::unguardWithSemaphore($sem);
++		}
++
++		return $preview;
+ 	}
+ 
+ 	/**
+diff --git a/tests/lib/Preview/GeneratorTest.php b/tests/lib/Preview/GeneratorTest.php
+index 0dec1aa..b673100 100644
+--- a/tests/lib/Preview/GeneratorTest.php
++++ b/tests/lib/Preview/GeneratorTest.php
+@@ -158,8 +158,13 @@ class GeneratorTest extends \Test\TestCase {
+ 			->willReturn($previewFolder);
+ 
+ 		$this->config->method('getSystemValue')
+-			->willReturnCallback(function ($key, $defult) {
+-				return $defult;
++			->willReturnCallback(function ($key, $default) {
++				return $default;
++			});
++
++		$this->config->method('getSystemValueInt')
++			->willReturnCallback(function ($key, $default) {
++				return $default;
+ 			});
+ 
+ 		$invalidProvider = $this->createMock(IProviderV2::class);
