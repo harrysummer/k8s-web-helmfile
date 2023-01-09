@@ -20,9 +20,12 @@ jobs:
 
     - name: Setup helmfile
       uses: mamezou-tech/setup-helmfile@v1.2.0
+      with:
+        additional-helm-plugins: https://github.com/jkroepke/helm-secrets --version v4.1.1
 
     - name: Test
       run: |
         helmfile --version
+        helm secrets --version
         helm version
         kubectl version --client
