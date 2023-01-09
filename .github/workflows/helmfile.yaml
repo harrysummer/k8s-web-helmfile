@@ -12,7 +12,7 @@ on:
     - '*.yaml'
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -20,7 +20,7 @@ jobs:
 
     - name: Azure login
       id: login
-      uses: azure/login@v1.4.3
+      uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
@@ -41,9 +41,6 @@ jobs:
         install-kubectl: false
         additional-helm-plugins: https://github.com/jkroepke/helm-secrets --version v4.1.1
 
-    - name: Test
-      run: |
-        helmfile --version
-        helm secrets --version
-        helm version
-        kubectl version --client
+    - name: Deploy helmfile
+      run: helmfile apply helmfile.yaml -e prod
+
