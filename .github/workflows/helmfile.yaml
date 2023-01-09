@@ -4,12 +4,10 @@ on:
   push:
     branches:
     - main
-    paths:
-    - '*/**'
-    - '!dockers/**'
-    - '!.github/**'
-    - .github/workflows/helmfile.yaml
-    - '*.yaml'
+    paths-ignore:
+    - dockers/**
+    - .github/workflows/*.yaml
+    - '!.github/workflows/helmfile.yaml'
 
 jobs:
   build:
