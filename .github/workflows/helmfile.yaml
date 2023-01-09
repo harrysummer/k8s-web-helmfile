@@ -41,6 +41,9 @@ jobs:
         install-kubectl: false
         additional-helm-plugins: https://github.com/jkroepke/helm-secrets --version v4.1.1
 
+    - name: Sops Binary Installer
+      uses: mdgreenwald/mozilla-sops-action@v1.4.1
+
     - name: Deploy helmfile
       run: helmfile apply helmfile.yaml -e prod
 
