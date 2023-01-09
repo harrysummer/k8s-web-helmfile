@@ -1,7 +1,7 @@
 image:
   flavor: fpm
   repository: ghcr.io/harrysummer/k8s-web-helmfile/nextcloud
-  tag: fd478579ca2224b3a85f1a9f92e36cff5593780b
+  tag: e85f95a46cea48647993ad4ec5db132a45534dbf
   pullSecrets:
   - nextcloud-image-pull-secret
 ingress:
@@ -65,6 +65,8 @@ nextcloud:
           4 => 'OC\\Preview\\TXT',
           5 => 'OC\\Preview\\OpenDocument',
         ),
+        'preview_concurrency_all' => 8,
+        'preview_concurrency_new' => 4,
       );
   phpConfigs:
     www2.conf: |
