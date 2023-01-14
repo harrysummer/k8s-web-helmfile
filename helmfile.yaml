@@ -136,3 +136,11 @@ releases:
   secrets:
   - ./secrets/mail.prod.yaml
 {{- end }}
+
+- name: calibre-web
+  namespace: nextcloud
+  chart: ./charts/calibre-web
+  needs:
+  - nextcloud/nextcloud
+  values:
+  - *env

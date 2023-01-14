@@ -4,3 +4,5 @@ nextcloud:
   cluster-issuer: letsencrypt-prod
 pgadmin:
   cluster-issuer: letsencrypt-prod
+calibre-web:
+  cluster-issuer: letsencrypt-prod

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: calibre-web
+  annotations:
+    cert-manager.io/cluster-issuer: {{ index .Values "cluster-issuer" }}
+    nginx.ingress.kubernetes.io/proxy-body-size: 2G
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - {{ .Values.host }}
+    secretName: calibre-web-tls-secret
+  rules:
+  - host: {{ .Values.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: calibre-web
+            port:
+              name: web

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calibre-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calibre-web
+  template:
+    metadata:
+      labels:
+        app: calibre-web
+    spec:
+      containers:
+      - name: calibre-web
+        image: lscr.io/linuxserver/calibre-web:0.6.19
+        env:
+        - name: PUID
+          value: "33"
+        - name: PGID
+          value: "33"
+        - name: TZ
+          value: America/Vancouver
+        - name: DOCKER_MODS
+          value: linuxserver/mods:universal-calibre
+        ports:
+        - name: calibre-web
+          containerPort: 8083
+        volumeMounts:
+        - mountPath: /config
+          name: nextcloud-data
+          subPath: data/akira/files/Books/config
+        - mountPath: /books
+          name: nextcloud-data
+          subPath: data/akira/files/Books/books
+      volumes:
+      - name: nextcloud-data
+        persistentVolumeClaim:
+          claimName: nextcloud-data

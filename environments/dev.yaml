@@ -3,8 +3,11 @@ global:
 cluster-issuer:
   self-signed: true
 nextcloud:
-  host: cloud.localhost
+  host: nextcloud.localhost
   cluster-issuer: self-signed
 pgadmin:
   host: pgadmin.localhost
+  cluster-issuer: self-signed
+calibre-web:
+  host: calibre.localhost
   cluster-issuer: self-signed
