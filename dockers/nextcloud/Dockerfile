@@ -1,4 +1,4 @@
-FROM nextcloud:25.0.2-fpm
+FROM nextcloud:25.0.3-fpm
 
 RUN apt update && apt install -y libbz2-dev \
     && docker-php-ext-configure bz2 --with-bz2 \
@@ -37,9 +37,3 @@ RUN mkdir pdlib \
 
 RUN apt update && apt install -y ffmpeg \
     && rm -rf /var/lib/apt/lists/*
-
-COPY *.diff /root
-RUN for f in /root/*.diff; do \
-    patch -Nut -d /usr/src/nextcloud -p 1 -i $f; \
-    done \
-    && rm /root/*.diff
