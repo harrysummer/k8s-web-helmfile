@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: calibre-web
-        image: lscr.io/linuxserver/calibre-web:0.6.19
+        image: lscr.io/linuxserver/calibre-web:0.6.21
         env:
         - name: PUID
           value: "33"
