@@ -14,6 +14,7 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: 2G
     nginx.ingress.kubernetes.io/server-snippet: |-
       server_tokens off;
+      more_set_headers "X-Robots-Tag: noindex, nofollow";
 
       location ^~ /.well-known {
         location = /.well-known/carddav { return 301 /remote.php/dav/; }
