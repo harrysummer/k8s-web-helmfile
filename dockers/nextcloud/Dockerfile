@@ -1,4 +1,4 @@
-FROM nextcloud:27.1.9-fpm
+FROM nextcloud:28.0.4-fpm
 
 RUN apt update && apt install -y libbz2-dev \
     && docker-php-ext-configure bz2 --with-bz2 \
